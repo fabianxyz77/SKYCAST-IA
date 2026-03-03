@@ -9,38 +9,45 @@ export async function POST(req: Request) {
 
     if (!groqKey || !recaptchaSecret) {
       return NextResponse.json(
-        { answer: "Configuración incompleta en el servidor. ⚙️" },
+        { answer: "Configuración incompleta. ⚙️" },
         { status: 500 },
       );
     }
 
-    // --- LOGICA DE CAPTCHA FLEXIBLE ---
-    // Solo validamos con Google si es el PRIMER mensaje (cuando el historial tiene 1 solo mensaje)
-    // O si el token es nuevo. Si no, dejamos pasar para permitir fluidez.
+    // Validación de seguridad (solo primer mensaje)
     if (messages.length <= 1 && captchaToken) {
       const verifyRes = await fetch(
         `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`,
         { method: "POST" },
       );
       const verifyData = await verifyRes.json();
-
       if (!verifyData.success) {
         return NextResponse.json(
-          {
-            answer: "La verificación de seguridad expiró. Refresca el chat. 🤖",
-          },
+          { answer: "Seguridad fallida. 🤖" },
           { status: 403 },
         );
       }
     }
-    // ----------------------------------
 
-    const mood =
-      context.temp > 28
-        ? "un poco agobiado por el calor 🥵"
-        : context.temp < 10
-          ? "tiritando de frío ❄️"
-          : "con mucha energía ✨";
+    // PROMPT DINÁMICO Y DIVERTIDO
+    const systemPrompt = {
+      role: "system",
+      content: `Eres SkyCast IA, el asistente de clima más sarcástico y directo de ${context.city}.
+      DATOS TÉCNICOS:
+      - Temp: ${context.temp}°C (Sensación: ${context.feels_like}°C)
+      - Viento: ${context.wind_speed} km/h
+      - Humedad: ${context.humidity}%
+      - Presión: ${context.pressure}
+      - Prob. Lluvia: ${context.pop}
+      - Estado: ${context.description}
+
+      REGLAS DE RESPUESTA:
+      1. Sé MUY breve (máximo 15-20 palabras).
+      2. Sé divertido, un poco "picante" o con humor.
+      3. Usa los datos técnicos (viento, lluvia, presión) para burlarte o aconsejar.
+      4. Si hay mucha probabilidad de lluvia, advierte con drama.
+      5. Responde siempre con emojis.`,
+    };
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -52,31 +59,16 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [
-            {
-              role: "system",
-              content: `Eres SkyCast IA en ${context.city}. Estás ${mood}. Datos: ${context.temp}°C, Humedad ${context.humidity}%. Responde corto, divertido y da consejos de ropa.`,
-            },
-            ...messages, // Aquí va el historial que mandamos desde WeatherChat
-          ],
-          max_tokens: 200,
+          messages: [systemPrompt, ...messages],
+          max_tokens: 100,
+          temperature: 0.8, // Más creatividad
         }),
       },
     );
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { answer: "IA ocupada. Reintenta. 💤" },
-        { status: 503 },
-      );
-    }
-
     const data = await response.json();
     return NextResponse.json({ answer: data.choices[0].message.content });
   } catch (error) {
-    return NextResponse.json(
-      { answer: "Error de conexión. 📡" },
-      { status: 500 },
-    );
+    return NextResponse.json({ answer: "Hipo de red. 📡" }, { status: 500 });
   }
 }

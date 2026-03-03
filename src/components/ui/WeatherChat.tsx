@@ -24,6 +24,9 @@ interface WeatherChatProps {
   feels_like: number;
   wind_speed: number;
   description: string;
+  // Nuevas props técnicas para la IA
+  pressure?: number | string;
+  pop?: number;
 }
 
 export default function WeatherChat({
@@ -34,6 +37,8 @@ export default function WeatherChat({
   feels_like,
   wind_speed,
   description,
+  pressure,
+  pop,
 }: WeatherChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,21 +54,16 @@ export default function WeatherChat({
   const isHot = weatherType === "hot";
   const isRain = ["rain", "thunder", "drizzle"].includes(weatherType);
 
-  // Paleta de colores sólidos y planos mejorada
   const theme = {
     header: isHot ? "bg-[#FF5733]" : isSnow ? "bg-[#3498DB]" : "bg-[#000000]",
-
     container: isSnow
       ? "bg-white/95 border-2 border-[#3498DB] text-slate-900"
       : "bg-[#1A1A1A]/95 border-2 border-white/20 text-white",
-
     input: isSnow
       ? "bg-white border-2 border-[#3498DB] text-slate-900"
       : "bg-[#2D2D2D] border-2 border-white/10 text-white",
-
     userMsg: "bg-[#E74C3C] text-white",
     aiMsg: isSnow ? "bg-[#ECF0F1] text-slate-800" : "bg-[#3D3D3D] text-white",
-
     button: "bg-[#2ECC71]",
   };
 
@@ -78,7 +78,6 @@ export default function WeatherChat({
     if (!msgText || isLoading || !captchaToken) return;
     if (msgText.length > 300) return;
 
-    // Actualizamos el historial local con el nuevo mensaje del usuario
     const newMessages: Message[] = [
       ...messages,
       { role: "user", content: msgText },
@@ -92,7 +91,7 @@ export default function WeatherChat({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages, // Enviamos TODO el historial para que tenga memoria
+          messages: newMessages,
           captchaToken: captchaToken,
           context: {
             city,
@@ -101,6 +100,8 @@ export default function WeatherChat({
             feels_like,
             wind_speed,
             description,
+            pressure: pressure || "N/A",
+            pop: pop !== undefined ? `${Math.round(pop * 100)}%` : "0%",
           },
         }),
       });
@@ -108,12 +109,10 @@ export default function WeatherChat({
       const data = await response.json();
       if (!response.ok) throw new Error(data.answer);
 
-      // Añadimos la respuesta de la IA al historial
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.answer },
       ]);
-
       setIsVerified(true);
     } catch (error: any) {
       setMessages((prev) => [
@@ -142,7 +141,9 @@ export default function WeatherChat({
             className={`${theme.header} p-4 flex items-center gap-3 text-white font-bold`}
           >
             <Sparkles size={20} />
-            <span className="text-sm tracking-wide">SKYCAST CHAT</span>
+            <span className="text-sm tracking-wide uppercase">
+              SkyCast Chat
+            </span>
           </div>
 
           <div
@@ -151,8 +152,8 @@ export default function WeatherChat({
           >
             {!isVerified && !captchaToken && (
               <div className="flex flex-col items-center justify-center h-full space-y-4">
-                <p className="text-xs font-bold uppercase opacity-60 text-center px-4">
-                  Verifica que eres humano para chatear
+                <p className="text-[10px] font-black uppercase opacity-60 text-center px-6 tracking-widest">
+                  Validación de Seguridad
                 </p>
                 <ReCAPTCHA
                   sitekey={siteKey}
@@ -168,11 +169,13 @@ export default function WeatherChat({
             {isVerified && messages.length === 0 && (
               <div className="pt-2">
                 <button
-                  onClick={() => handleSend(`¿Qué ropa me pongo en ${city}?`)}
-                  className="w-full flex items-center gap-2 p-3 rounded-xl text-xs font-bold border-2 border-current/20 hover:bg-current/5 transition-colors text-left"
+                  onClick={() =>
+                    handleSend(`¿Cómo está el clima para salir ahora?`)
+                  }
+                  className="w-full flex items-center gap-2 p-3 rounded-xl text-xs font-black border-2 border-current/20 hover:bg-current/10 transition-colors text-left uppercase tracking-tighter"
                 >
                   {isSnow ? <Snowflake size={16} /> : <Shirt size={16} />}
-                  ¿Qué ropa me pongo hoy?
+                  ¿Qué me pongo hoy?
                 </button>
               </div>
             )}
@@ -183,9 +186,7 @@ export default function WeatherChat({
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] p-3 rounded-xl text-[13px] font-medium shadow-sm ${
-                    m.role === "user" ? theme.userMsg : theme.aiMsg
-                  }`}
+                  className={`max-w-[85%] p-3 rounded-xl text-[13px] font-bold shadow-sm ${m.role === "user" ? theme.userMsg : theme.aiMsg}`}
                 >
                   {m.content}
                 </div>
@@ -193,8 +194,8 @@ export default function WeatherChat({
             ))}
 
             {isLoading && (
-              <div className="text-[10px] font-bold opacity-50 px-2 uppercase italic animate-pulse">
-                IA escribiendo...
+              <div className="text-[10px] font-black opacity-40 px-2 uppercase italic animate-pulse">
+                SkyCast está pensando...
               </div>
             )}
           </div>
@@ -202,32 +203,23 @@ export default function WeatherChat({
           <div
             className={`p-4 border-t-2 border-current/10 ${!isVerified && "opacity-20 pointer-events-none"}`}
           >
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  maxLength={300}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="Escribe algo..."
-                  className={`flex-1 outline-none rounded-xl px-4 py-2 text-sm ${theme.input}`}
-                />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={isLoading || !input.trim()}
-                  className={`p-2 rounded-xl text-white shadow-md transition-all active:scale-90 disabled:grayscale ${theme.button}`}
-                >
-                  <Send size={20} />
-                </button>
-              </div>
-              <div className="flex justify-end">
-                <span
-                  className={`text-[9px] font-bold ${input.length >= 280 ? "text-red-500" : "opacity-40"}`}
-                >
-                  {input.length} / 300
-                </span>
-              </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                maxLength={300}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Pregunta sobre el clima..."
+                className={`flex-1 outline-none rounded-xl px-4 py-2 text-sm font-bold ${theme.input}`}
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={isLoading || !input.trim()}
+                className={`p-2 rounded-xl text-white shadow-lg transition-all active:scale-90 disabled:grayscale ${theme.button}`}
+              >
+                <Send size={20} />
+              </button>
             </div>
           </div>
         </div>
