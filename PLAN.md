@@ -41,5 +41,5 @@
 ¿Para qué sirve? Es el sello de la caja. El mensaje entre comillas debe ser descriptivo para que, si el día de mañana algo falla, sepas exactamente qué hiciste en este paso.
 
 4. Lanzar a la nube
-## it push origin main
+## git push origin main
 ¿Para qué sirve? Este es el comando final. Sube tu "caja" sellada desde tu computadora a los servidores de GitHub.

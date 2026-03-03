@@ -69,7 +69,7 @@ export default function Home() {
 
   // 3. DISPARADOR DE GPS (Para móviles)
   const handleGPSClick = () => {
-    refresh(); // Llama a la función del hook que tiene el timeout y highAccuracy
+    refresh(); // Llama a la función del hook con timeout y alta precisión
   };
 
   // Efecto cuando el hook detecta coordenadas (automático o manual)
@@ -115,7 +115,7 @@ export default function Home() {
             <SearchCity 
               onSearch={handleSearch} 
               onGPS={handleGPSClick} 
-              isSearchingGPS={locLoading} // Pasamos el estado de carga del GPS
+              isSearchingGPS={locLoading} 
             />
           </div>
         </div>
@@ -124,10 +124,10 @@ export default function Home() {
       {/* CONTENIDO PRINCIPAL */}
       <div className="w-full max-w-[1400px] mx-auto p-4 md:p-10 space-y-6 animate-in fade-in duration-700">
         
-        {/* Banner de Alertas (Tormentas, Niebla, etc) */}
+        {/* Banner de Alertas */}
         {weather && <WeatherAlerts weather={weather} />}
 
-        {/* Grid: Card Principal + Estadísticas laterales */}
+        {/* Grid: Card Principal + Estadísticas */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <MainWeatherCard 
@@ -143,14 +143,42 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Gráfico y Pronóstico por horas */}
+        {/* Pronóstico */}
         <ForecastCard forecast={forecast} />
 
-        {/* Mensajes de Error (GPS o API) */}
+        {/* BLOQUE DE ERROR Y RESCATE DE GPS */}
         {(error || locError) && (
-          <div className="flex items-center justify-center gap-3 bg-red-500/10 border border-red-500/20 p-6 rounded-[2rem] text-red-400 font-bold text-sm">
-            <AlertCircle size={20} />
-            <p>{error || locError}</p>
+          <div className="flex flex-col items-center justify-center gap-6 bg-red-500/5 border border-red-500/20 p-8 md:p-12 rounded-[3rem] text-center animate-in zoom-in-95 duration-500">
+            <div className="bg-red-500/20 p-5 rounded-full ring-8 ring-red-500/5">
+              <AlertCircle size={40} className="text-red-500" />
+            </div>
+            
+            <div className="space-y-3">
+              <h3 className="text-xl font-black uppercase tracking-tight text-red-400">
+                {locError?.includes("denegado") ? "Permiso de Ubicación Necesario" : "Ubicación no disponible"}
+              </h3>
+              <p className="text-sm text-red-200/50 max-w-md mx-auto leading-relaxed italic">
+                "Activa tu ubicación real en el dispositivo para detectar tu ciudad automáticamente y ofrecerte una exactitud del 100% en el pronóstico."
+              </p>
+            </div>
+
+            <button
+              onClick={handleGPSClick}
+              disabled={locLoading}
+              className="group flex items-center gap-3 bg-red-500 hover:bg-red-600 disabled:bg-slate-800 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all active:scale-95 shadow-2xl shadow-red-500/20"
+            >
+              {locLoading ? "Buscando satélites..." : "Permitir Activar Ubicación"}
+            </button>
+
+            {locError?.includes("denegado") && (
+              <div className="pt-2">
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-loose">
+                  Si el navegador no lanza el aviso: <br />
+                  Haz clic en el <span className="text-slate-300">ícono del candado (🔒)</span> en la barra de direcciones <br />
+                  y cambia Ubicación a <span className="text-blue-500 font-bold">"Permitir"</span>.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -159,7 +187,6 @@ export default function Home() {
         Sistema Meteorológico • SkyCast-IA Realtime • 2026
       </footer>
 
-      {/* Chat Bot Flotante */}
       {weather && (
         <WeatherChat 
           city={weather.name} 
