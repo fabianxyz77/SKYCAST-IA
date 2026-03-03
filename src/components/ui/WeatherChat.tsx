@@ -78,6 +78,7 @@ export default function WeatherChat({
     setIsLoading(true);
 
     try {
+      // Usamos ruta relativa pero asegurándonos de que apunte a la API
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,10 +96,16 @@ export default function WeatherChat({
         }),
       });
 
+      // Si el servidor tira error (como el 405), no intentamos leer JSON todavía
+      if (!response.ok) {
+        const errorData = await response.text(); // Leemos texto por si no es JSON
+        console.error("Error del servidor:", errorData);
+        throw new Error(
+          "El servidor rechazó la conexión (405). Revisa la ruta de la API.",
+        );
+      }
+
       const data = await response.json();
-
-      if (!response.ok) throw new Error(data.answer);
-
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.answer },
@@ -108,7 +115,8 @@ export default function WeatherChat({
         ...prev,
         {
           role: "assistant",
-          content: error.message || "Error de conexión. 📡",
+          content:
+            "Error: La IA no responde (API 405). Revisa la estructura de carpetas. 📡",
         },
       ]);
     } finally {
@@ -129,7 +137,6 @@ export default function WeatherChat({
         <div
           className={`absolute bottom-20 right-0 w-[350px] h-[550px] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 border backdrop-blur-xl ${theme.container}`}
         >
-          {/* Header */}
           <div
             className={`${theme.accent} p-5 flex items-center gap-3 text-white`}
           >
@@ -137,7 +144,6 @@ export default function WeatherChat({
             <p className="font-bold text-sm">Asistente SkyCast IA</p>
           </div>
 
-          {/* Chat Body */}
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar"
@@ -180,13 +186,12 @@ export default function WeatherChat({
               </div>
             ))}
             {isLoading && (
-              <div className="text-[10px] opacity-50 animate-pulse">
+              <div className="text-[10px] opacity-50 animate-pulse text-center">
                 IA pensando...
               </div>
             )}
           </div>
 
-          {/* Input Area */}
           <div
             className={`p-4 border-t border-white/5 ${!captchaToken && "opacity-20 pointer-events-none"}`}
           >
@@ -196,12 +201,12 @@ export default function WeatherChat({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Preguntá lo que quieras..."
+                placeholder="Preguntá..."
                 className={`flex-1 outline-none border rounded-xl px-4 py-2 text-xs ${theme.input}`}
               />
               <button
                 onClick={() => handleSend()}
-                className={`p-2 rounded-xl text-white ${theme.accent} active:scale-90 transition-transform`}
+                className={`p-2 rounded-xl text-white ${theme.accent} active:scale-90`}
               >
                 <Send size={18} />
               </button>
