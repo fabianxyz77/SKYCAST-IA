@@ -5,7 +5,7 @@ export const useLocation = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const getLocation = useCallback(() => {
+  const getLocation = useCallback((isManual = false) => {
     if (!navigator.geolocation) {
       setError("Tu navegador no soporta geolocalización");
       setLoading(false);
@@ -13,12 +13,13 @@ export const useLocation = () => {
     }
 
     setLoading(true);
-    setError(null);
+    // No borramos el error anterior de inmediato si es manual para que el usuario vea el feedback
+    if (!isManual) setError(null);
 
-    const options = {
-      enableHighAccuracy: true, // Fuerza el uso de GPS real
-      timeout: 10000,           // Espera máximo 10 segundos
-      maximumAge: 0             // No usa ubicaciones guardadas viejas
+    const options: PositionOptions = {
+      enableHighAccuracy: true, // Crucial para móviles
+      timeout: 15000,           // Subimos a 15s porque algunos móviles tardan en conectar
+      maximumAge: 0             // Forzamos ubicación fresca, no de caché
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -27,26 +28,36 @@ export const useLocation = () => {
           lat: pos.coords.latitude,
           lon: pos.coords.longitude
         });
+        setError(null);
         setLoading(false);
       },
       (err) => {
-        // Errores más descriptivos
-        const messages: any = {
-          1: "Permiso de ubicación denegado",
-          2: "Ubicación no disponible (GPS apagado?)",
-          3: "Tiempo de espera agotado"
-        };
-        setError(messages[err.code] || "Error desconocido al obtener ubicación");
+        let msg = "Error desconocido";
+        switch (err.code) {
+          case 1: msg = "Permiso denegado. Activa la ubicación en los ajustes."; break;
+          case 2: msg = "Ubicación no disponible. Revisa tu señal o GPS."; break;
+          case 3: msg = "Tiempo de espera agotado. Reintenta."; break;
+        }
+        setError(msg);
         setLoading(false);
+        
+        // Si falla el automático por timeout, no bloqueamos la app, 
+        // simplemente dejamos que el usuario use el buscador.
+        console.error("Geolocation Error:", err);
       },
       options
     );
   }, []);
 
+  // Intento automático inicial
   useEffect(() => {
-    getLocation();
+    getLocation(false);
   }, [getLocation]);
 
-  // Devolvemos también la función refresh por si queremos un botón de "Reintentar"
-  return { coords, error, loading, refresh: getLocation };
+  return { 
+    coords, 
+    error, 
+    loading, 
+    refresh: () => getLocation(true) // Función para el botón de GPS
+  };
 };
