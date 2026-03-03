@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sun, MapPin, Settings2, RefreshCw } from "lucide-react";
+import {
+  Sun,
+  MapPin,
+  Settings2,
+  RefreshCw,
+  LocateFixed,
+  Search,
+} from "lucide-react";
 import { useLocation } from "@/hooks/useLocation";
 import {
   getCurrentWeather,
@@ -110,7 +117,7 @@ export default function Home() {
   const isSnow = weatherType === "snow";
   const isHot = weatherType === "hot";
 
-  // --- PANTALLA DE CARGA VIVIDA (4 Segundos) ---
+  // --- PANTALLA DE CARGA ---
   if (minimumLoading || (isInitialLoading && !weather)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-sky-400 via-blue-500 to-blue-700 flex flex-col items-center justify-center text-white relative overflow-hidden z-[1000]">
@@ -178,7 +185,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="w-48 h-[6px] bg-black/20 rounded-full overflow-hidden border border-white/10">
-                <div className="h-full bg-gradient-to-r from-yellow-300 to-white animate-loading-bar" />
+                <div className="h-full bg-gradient-to-r from-yellow-500 to-white animate-loading-bar" />
               </div>
             </div>
           )}
@@ -229,18 +236,64 @@ export default function Home() {
         <div className="absolute inset-0 pointer-events-none z-0 rain-container"></div>
       )}
 
+      {/* ===== HEADER ===== */}
       <header
-        className={`w-full sticky top-0 z-50 transition-colors border-b backdrop-blur-md ${
+        className={`w-full sticky top-0 z-50 transition-all duration-300 border-b backdrop-blur-xl ${
           isSnow
-            ? "bg-white/70 border-slate-400/10"
-            : "bg-black/30 border-white/10"
+            ? "bg-white/90 border-slate-200 shadow-sm text-slate-900"
+            : "bg-[#0A0A0A]/40 border-white/5 shadow-2xl text-white"
         }`}
       >
-        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between gap-8">
-          <h1 className="text-xl font-black uppercase italic tracking-tighter">
-            SkyCast IA
-          </h1>
-          <div className="flex-1 max-w-2xl">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-10 h-16 md:h-[72px] flex items-center justify-between gap-3">
+          {/* IZQUIERDA: MARCA */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div
+              className={`w-9 h-9 md:w-10 md:h-10 rounded-2xl flex items-center justify-center transition-transform hover:rotate-12 ${
+                isSnow
+                  ? "bg-slate-900 shadow-lg"
+                  : "bg-white shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              }`}
+            >
+              <Sun
+                size={20}
+                className={isSnow ? "text-white" : "text-black"}
+                fill="currentColor"
+              />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-lg md:text-xl font-[1000] uppercase tracking-tighter leading-none">
+                SkyCast
+              </h1>
+              <span className="text-[9px] md:text-[10px] font-black tracking-[0.4em] uppercase opacity-40">
+                AI Weather
+              </span>
+            </div>
+          </div>
+
+          {/* DERECHA: ACCIONES — sin overflow */}
+          <div className="flex items-center gap-2 min-w-0">
+            {/* BOTÓN GPS — sólo icono en mobile, texto en md+ */}
+            <button
+              onClick={refresh}
+              disabled={locLoading}
+              title="Mi ubicación"
+              className={`flex items-center justify-center gap-2 h-10 md:h-11 px-3 md:px-5 rounded-2xl font-bold text-[11px] uppercase tracking-widest transition-all active:scale-90 disabled:opacity-50 shrink-0 ${
+                isSnow
+                  ? "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                  : "bg-white/5 text-white border border-white/10 hover:bg-white/10"
+              }`}
+            >
+              {locLoading ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <LocateFixed size={17} />
+                  <span className="hidden md:inline">Mi Ubicación</span>
+                </>
+              )}
+            </button>
+
+            {/* BUSCADOR */}
             <SearchCity
               onSearch={handleSearch}
               onGPS={refresh}
@@ -251,6 +304,7 @@ export default function Home() {
         </div>
       </header>
 
+      {/* CONTENIDO */}
       <div
         className={`w-full max-w-[1400px] mx-auto p-4 md:p-10 space-y-8 z-10 relative flex-1 ${isSnow ? "[&_*]:text-slate-950" : ""}`}
       >
@@ -280,6 +334,8 @@ export default function Home() {
           feels_like={Math.round(weather.main.feels_like)}
           wind_speed={weather.wind.speed}
           description={weather.weather[0].description}
+          pressure={weather.main.pressure}
+          pop={forecast[0]?.pop || 0}
         />
       )}
 
