@@ -40,6 +40,7 @@ export default function WeatherChat({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
@@ -48,20 +49,22 @@ export default function WeatherChat({
   const isHot = weatherType === "hot";
   const isRain = ["rain", "thunder", "drizzle"].includes(weatherType);
 
+  // Paleta de colores sólidos y planos mejorada
   const theme = {
-    accent: isHot
-      ? "bg-orange-600"
-      : isSnow
-        ? "bg-slate-900"
-        : isRain
-          ? "bg-blue-800"
-          : "bg-slate-700",
+    header: isHot ? "bg-[#FF5733]" : isSnow ? "bg-[#3498DB]" : "bg-[#000000]",
+
     container: isSnow
-      ? "bg-white/80 border-black/10 text-slate-900"
-      : "bg-slate-800/90 border-white/10 text-white",
+      ? "bg-white/95 border-2 border-[#3498DB] text-slate-900"
+      : "bg-[#1A1A1A]/95 border-2 border-white/20 text-white",
+
     input: isSnow
-      ? "bg-black/5 border-black/10 text-slate-900"
-      : "bg-white/5 border-white/10 text-white",
+      ? "bg-white border-2 border-[#3498DB] text-slate-900"
+      : "bg-[#2D2D2D] border-2 border-white/10 text-white",
+
+    userMsg: "bg-[#E74C3C] text-white",
+    aiMsg: isSnow ? "bg-[#ECF0F1] text-slate-800" : "bg-[#3D3D3D] text-white",
+
+    button: "bg-[#2ECC71]",
   };
 
   useEffect(() => {
@@ -70,20 +73,26 @@ export default function WeatherChat({
   }, [messages, isLoading]);
 
   const handleSend = async (customMsg?: string) => {
-    const msgToSend = customMsg || input.trim();
-    if (!msgToSend || isLoading || !captchaToken) return;
+    const msgText = (customMsg || input).trim();
 
-    setMessages((prev) => [...prev, { role: "user", content: msgToSend }]);
+    if (!msgText || isLoading || !captchaToken) return;
+    if (msgText.length > 300) return;
+
+    // Actualizamos el historial local con el nuevo mensaje del usuario
+    const newMessages: Message[] = [
+      ...messages,
+      { role: "user", content: msgText },
+    ];
+    setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
     try {
-      // Usamos ruta relativa pero asegurándonos de que apunte a la API
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: msgToSend,
+          messages: newMessages, // Enviamos TODO el historial para que tenga memoria
           captchaToken: captchaToken,
           context: {
             city,
@@ -96,28 +105,20 @@ export default function WeatherChat({
         }),
       });
 
-      // Si el servidor tira error (como el 405), no intentamos leer JSON todavía
-      if (!response.ok) {
-        const errorData = await response.text(); // Leemos texto por si no es JSON
-        console.error("Error del servidor:", errorData);
-        throw new Error(
-          "El servidor rechazó la conexión (405). Revisa la ruta de la API.",
-        );
-      }
-
       const data = await response.json();
+      if (!response.ok) throw new Error(data.answer);
+
+      // Añadimos la respuesta de la IA al historial
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.answer },
       ]);
+
+      setIsVerified(true);
     } catch (error: any) {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content:
-            "Error: La IA no responde (API 405). Revisa la estructura de carpetas. 📡",
-        },
+        { role: "assistant", content: "Error de conexión. 📡" },
       ]);
     } finally {
       setIsLoading(false);
@@ -128,47 +129,50 @@ export default function WeatherChat({
     <div className="fixed bottom-6 right-6 z-[100]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`p-4 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 text-white ${theme.accent} border border-white/10`}
+        className={`p-4 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 text-white ${theme.header}`}
       >
         {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
       </button>
 
       {isOpen && (
         <div
-          className={`absolute bottom-20 right-0 w-[350px] h-[550px] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 border backdrop-blur-xl ${theme.container}`}
+          className={`absolute bottom-20 right-0 w-[350px] h-[550px] rounded-2xl shadow-2xl flex flex-col overflow-hidden border-2 ${theme.container}`}
         >
           <div
-            className={`${theme.accent} p-5 flex items-center gap-3 text-white`}
+            className={`${theme.header} p-4 flex items-center gap-3 text-white font-bold`}
           >
-            <Sparkles size={18} className="animate-pulse" />
-            <p className="font-bold text-sm">Asistente SkyCast IA</p>
+            <Sparkles size={20} />
+            <span className="text-sm tracking-wide">SKYCAST CHAT</span>
           </div>
 
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar"
           >
-            {!captchaToken && (
-              <div className="flex flex-col items-center justify-center h-full space-y-4 text-center">
-                <p className="text-[10px] uppercase tracking-widest font-black opacity-50">
-                  Verificá que eres humano
+            {!isVerified && !captchaToken && (
+              <div className="flex flex-col items-center justify-center h-full space-y-4">
+                <p className="text-xs font-bold uppercase opacity-60 text-center px-4">
+                  Verifica que eres humano para chatear
                 </p>
                 <ReCAPTCHA
                   sitekey={siteKey}
-                  onChange={(t) => setCaptchaToken(t)}
+                  onChange={(t) => {
+                    setCaptchaToken(t);
+                    setIsVerified(true);
+                  }}
                   theme={isSnow ? "light" : "dark"}
                 />
               </div>
             )}
 
-            {captchaToken && messages.length === 0 && (
-              <div className="pt-4">
+            {isVerified && messages.length === 0 && (
+              <div className="pt-2">
                 <button
-                  onClick={() => handleSend("¿Qué ropa me pongo hoy?")}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl text-xs border border-current/10 hover:bg-current/5 transition-colors"
+                  onClick={() => handleSend(`¿Qué ropa me pongo en ${city}?`)}
+                  className="w-full flex items-center gap-2 p-3 rounded-xl text-xs font-bold border-2 border-current/20 hover:bg-current/5 transition-colors text-left"
                 >
                   {isSnow ? <Snowflake size={16} /> : <Shirt size={16} />}
-                  ¿Qué ropa me pongo hoy en {city}?
+                  ¿Qué ropa me pongo hoy?
                 </button>
               </div>
             )}
@@ -179,37 +183,51 @@ export default function WeatherChat({
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] p-3 rounded-2xl text-xs ${m.role === "user" ? `${theme.accent} text-white rounded-tr-none` : "bg-current/10 rounded-tl-none"}`}
+                  className={`max-w-[85%] p-3 rounded-xl text-[13px] font-medium shadow-sm ${
+                    m.role === "user" ? theme.userMsg : theme.aiMsg
+                  }`}
                 >
                   {m.content}
                 </div>
               </div>
             ))}
+
             {isLoading && (
-              <div className="text-[10px] opacity-50 animate-pulse text-center">
-                IA pensando...
+              <div className="text-[10px] font-bold opacity-50 px-2 uppercase italic animate-pulse">
+                IA escribiendo...
               </div>
             )}
           </div>
 
           <div
-            className={`p-4 border-t border-white/5 ${!captchaToken && "opacity-20 pointer-events-none"}`}
+            className={`p-4 border-t-2 border-current/10 ${!isVerified && "opacity-20 pointer-events-none"}`}
           >
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Preguntá..."
-                className={`flex-1 outline-none border rounded-xl px-4 py-2 text-xs ${theme.input}`}
-              />
-              <button
-                onClick={() => handleSend()}
-                className={`p-2 rounded-xl text-white ${theme.accent} active:scale-90`}
-              >
-                <Send size={18} />
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  maxLength={300}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder="Escribe algo..."
+                  className={`flex-1 outline-none rounded-xl px-4 py-2 text-sm ${theme.input}`}
+                />
+                <button
+                  onClick={() => handleSend()}
+                  disabled={isLoading || !input.trim()}
+                  className={`p-2 rounded-xl text-white shadow-md transition-all active:scale-90 disabled:grayscale ${theme.button}`}
+                >
+                  <Send size={20} />
+                </button>
+              </div>
+              <div className="flex justify-end">
+                <span
+                  className={`text-[9px] font-bold ${input.length >= 280 ? "text-red-500" : "opacity-40"}`}
+                >
+                  {input.length} / 300
+                </span>
+              </div>
             </div>
           </div>
         </div>
