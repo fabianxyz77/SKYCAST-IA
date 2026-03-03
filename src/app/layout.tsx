@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 // Configuración de visualización para móviles (barra de estado, etc)
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -22,7 +22,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "SkyCast IA - Clima Inteligente",
-  description: "Pronóstico meteorológico en tiempo real con análisis detallado por IA.",
+  description:
+    "Pronóstico meteorológico en tiempo real con análisis detallado por IA.",
   manifest: "/site.webmanifest",
   icons: {
     icon: "/favicon.ico",

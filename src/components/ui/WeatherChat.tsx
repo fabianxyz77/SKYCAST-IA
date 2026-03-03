@@ -1,34 +1,116 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
-import { chatWithAi } from '@/lib/api/mistral'; // IMPORTAMOS LA ACCIÓN DIRECTA
+import { useState, useRef, useEffect } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
+import {
+  MessageCircle,
+  X,
+  Send,
+  Sparkles,
+  Shirt,
+  Snowflake,
+} from "lucide-react";
 
-export default function WeatherChat({ city, temp }: { city: string; temp: number }) {
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface WeatherChatProps {
+  city: string;
+  temp: number;
+  weatherType: string;
+  humidity: number;
+  feels_like: number;
+  wind_speed: number;
+  description: string;
+}
+
+export default function WeatherChat({
+  city,
+  temp,
+  weatherType,
+  humidity,
+  feels_like,
+  wind_speed,
+  description,
+}: WeatherChatProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
-  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+
+  const isSnow = weatherType === "snow";
+  const isHot = weatherType === "hot";
+  const isRain = ["rain", "thunder", "drizzle"].includes(weatherType);
+
+  const theme = {
+    accent: isHot
+      ? "bg-orange-600"
+      : isSnow
+        ? "bg-slate-900"
+        : isRain
+          ? "bg-blue-800"
+          : "bg-slate-700",
+    container: isSnow
+      ? "bg-white/80 border-black/10 text-slate-900"
+      : "bg-slate-800/90 border-white/10 text-white",
+    input: isSnow
+      ? "bg-black/5 border-black/10 text-slate-900"
+      : "bg-white/5 border-white/10 text-white",
+  };
 
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
+    if (scrollRef.current)
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, isLoading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (customMsg?: string) => {
+    const msgToSend = customMsg || input.trim();
+    if (!msgToSend || isLoading || !captchaToken) return;
 
-    const userMsg = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setMessages((prev) => [...prev, { role: "user", content: msgToSend }]);
+    setInput("");
     setIsLoading(true);
 
     try {
-      // LLAMADA DIRECTA A LA FUNCIÓN (Sin rutas de API!)
-      const answer = await chatWithAi(userMsg, { city, temp });
-      setMessages(prev => [...prev, { role: 'assistant', content: answer }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Error de conexión con el cerebro IA. 📡" }]);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: msgToSend,
+          captchaToken: captchaToken,
+          context: {
+            city,
+            temp,
+            humidity,
+            feels_like,
+            wind_speed,
+            description,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.answer);
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.answer },
+      ]);
+    } catch (error: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: error.message || "Error de conexión. 📡",
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -38,50 +120,92 @@ export default function WeatherChat({ city, temp }: { city: string; temp: number
     <div className="fixed bottom-6 right-6 z-[100]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 shadow-blue-500/20"
+        className={`p-4 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 text-white ${theme.accent} border border-white/10`}
       >
         {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-20 right-0 w-[350px] h-[450px] bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-          <div className="bg-blue-600 p-5 flex items-center gap-3">
-            <Sparkles size={18} className="text-white animate-pulse" />
-            <p className="font-bold text-sm">Asistente SkyCast</p>
+        <div
+          className={`absolute bottom-20 right-0 w-[350px] h-[550px] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 border backdrop-blur-xl ${theme.container}`}
+        >
+          {/* Header */}
+          <div
+            className={`${theme.accent} p-5 flex items-center gap-3 text-white`}
+          >
+            <Sparkles size={18} className="animate-pulse" />
+            <p className="font-bold text-sm">Asistente SkyCast IA</p>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 && (
-              <p className="text-slate-500 text-center text-[11px] mt-10">
-                ¿Querés saber qué ponerte hoy en {city}? Preguntame.
-              </p>
+          {/* Chat Body */}
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar"
+          >
+            {!captchaToken && (
+              <div className="flex flex-col items-center justify-center h-full space-y-4 text-center">
+                <p className="text-[10px] uppercase tracking-widest font-black opacity-50">
+                  Verificá que eres humano
+                </p>
+                <ReCAPTCHA
+                  sitekey={siteKey}
+                  onChange={(t) => setCaptchaToken(t)}
+                  theme={isSnow ? "light" : "dark"}
+                />
+              </div>
             )}
+
+            {captchaToken && messages.length === 0 && (
+              <div className="pt-4">
+                <button
+                  onClick={() => handleSend("¿Qué ropa me pongo hoy?")}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl text-xs border border-current/10 hover:bg-current/5 transition-colors"
+                >
+                  {isSnow ? <Snowflake size={16} /> : <Shirt size={16} />}
+                  ¿Qué ropa me pongo hoy en {city}?
+                </button>
+              </div>
+            )}
+
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
-                  m.role === 'user' 
-                    ? 'bg-blue-600 text-white rounded-tr-none' 
-                    : 'bg-white/10 text-slate-200 rounded-tl-none'
-                }`}>
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[85%] p-3 rounded-2xl text-xs ${m.role === "user" ? `${theme.accent} text-white rounded-tr-none` : "bg-current/10 rounded-tl-none"}`}
+                >
                   {m.content}
                 </div>
               </div>
             ))}
-            {isLoading && <div className="text-slate-500 text-[10px] animate-pulse">Escribiendo...</div>}
+            {isLoading && (
+              <div className="text-[10px] opacity-50 animate-pulse">
+                IA pensando...
+              </div>
+            )}
           </div>
 
-          <div className="p-4 bg-white/5 flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Escribí..."
-              className="flex-1 bg-slate-800 border border-white/10 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500"
-            />
-            <button onClick={handleSend} className="bg-blue-600 p-2 rounded-xl transition-colors">
-              <Send size={16} />
-            </button>
+          {/* Input Area */}
+          <div
+            className={`p-4 border-t border-white/5 ${!captchaToken && "opacity-20 pointer-events-none"}`}
+          >
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Preguntá lo que quieras..."
+                className={`flex-1 outline-none border rounded-xl px-4 py-2 text-xs ${theme.input}`}
+              />
+              <button
+                onClick={() => handleSend()}
+                className={`p-2 rounded-xl text-white ${theme.accent} active:scale-90 transition-transform`}
+              >
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
       )}
