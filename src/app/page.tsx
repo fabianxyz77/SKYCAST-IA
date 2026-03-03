@@ -230,7 +230,11 @@ export default function Home() {
       )}
 
       <header
-        className={`w-full sticky top-0 z-50 transition-colors bg-transparent border-b ${isSnow ? "border-slate-400/30" : "border-white/10"}`}
+        className={`w-full sticky top-0 z-50 transition-colors border-b backdrop-blur-md ${
+          isSnow
+            ? "bg-white/70 border-slate-400/10"
+            : "bg-black/30 border-white/10"
+        }`}
       >
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between gap-8">
           <h1 className="text-xl font-black uppercase italic tracking-tighter">

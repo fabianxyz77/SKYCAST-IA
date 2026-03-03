@@ -9,12 +9,12 @@ export async function POST(req: Request) {
 
     if (!groqKey || !recaptchaSecret) {
       return NextResponse.json(
-        { answer: "Configuración incompleta. ⚙️" },
+        { answer: "Faltan llaves de API. ⚙️" },
         { status: 500 },
       );
     }
 
-    // Validación de seguridad (solo primer mensaje)
+    // 1. Validación de seguridad (Solo primer mensaje para evitar errores de duplicado)
     if (messages.length <= 1 && captchaToken) {
       const verifyRes = await fetch(
         `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`,
@@ -23,32 +23,34 @@ export async function POST(req: Request) {
       const verifyData = await verifyRes.json();
       if (!verifyData.success) {
         return NextResponse.json(
-          { answer: "Seguridad fallida. 🤖" },
+          { answer: "Error de seguridad. Reintenta." },
           { status: 403 },
         );
       }
     }
 
-    // PROMPT DINÁMICO Y DIVERTIDO
+    // 2. System Prompt: Sincero, técnico y divertido
     const systemPrompt = {
       role: "system",
-      content: `Eres SkyCast IA, el asistente de clima más sarcástico y directo de ${context.city}.
-      DATOS TÉCNICOS:
-      - Temp: ${context.temp}°C (Sensación: ${context.feels_like}°C)
-      - Viento: ${context.wind_speed} km/h
+      content: `Eres SkyCast IA en ${context.city}. Tu estilo es directo, sincero y ligeramente sarcástico. No endulces el clima.
+      
+      DATOS REALES:
+      - Temperatura: ${context.temp}°C (Sensación: ${context.feels_like}°C)
       - Humedad: ${context.humidity}%
+      - Viento: ${context.wind_speed} km/h
       - Presión: ${context.pressure}
-      - Prob. Lluvia: ${context.pop}
+      - Probabilidad de lluvia: ${context.pop}
       - Estado: ${context.description}
 
-      REGLAS DE RESPUESTA:
-      1. Sé MUY breve (máximo 15-20 palabras).
-      2. Sé divertido, un poco "picante" o con humor.
-      3. Usa los datos técnicos (viento, lluvia, presión) para burlarte o aconsejar.
-      4. Si hay mucha probabilidad de lluvia, advierte con drama.
-      5. Responde siempre con emojis.`,
+      REGLAS CRÍTICAS:
+      1. Usa los datos técnicos (especialmente presión y probabilidad de lluvia) para dar consejos reales.
+      2. Sé breve (máximo 25 palabras).
+      3. Tono: Divertido pero sincero. Si el clima es malo, dilo sin vueltas.
+      4. EMOJIS: Máximo 2 por respuesta. No más.
+      5. Si preguntan qué ponerse, usa la sensación térmica de ${context.feels_like}°C.`,
     };
 
+    // 3. Llamada a Groq
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -60,15 +62,26 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
           messages: [systemPrompt, ...messages],
-          max_tokens: 100,
-          temperature: 0.8, // Más creatividad
+          max_tokens: 150,
+          temperature: 0.7, // Equilibrio entre seriedad y creatividad
         }),
       },
     );
 
+    if (!response.ok) {
+      return NextResponse.json(
+        { answer: "La IA se tomó un café. Reintenta pronto." },
+        { status: 503 },
+      );
+    }
+
     const data = await response.json();
     return NextResponse.json({ answer: data.choices[0].message.content });
   } catch (error) {
-    return NextResponse.json({ answer: "Hipo de red. 📡" }, { status: 500 });
+    console.error("Error en API:", error);
+    return NextResponse.json(
+      { answer: "Error de conexión. 📡" },
+      { status: 500 },
+    );
   }
 }
