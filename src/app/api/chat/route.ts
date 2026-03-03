@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    // Recibimos 'messages' en lugar de un solo 'message' para tener memoria
     const { messages, context, captchaToken } = await req.json();
 
     const groqKey = process.env.GROQ_API_KEY;
@@ -15,10 +14,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Validar reCAPTCHA
-    // IMPORTANTE: Solo validamos si viene un captchaToken (la primera vez)
-    // Para mensajes subsiguientes, confiamos en la sesión del cliente
-    if (captchaToken) {
+    // --- LOGICA DE CAPTCHA FLEXIBLE ---
+    // Solo validamos con Google si es el PRIMER mensaje (cuando el historial tiene 1 solo mensaje)
+    // O si el token es nuevo. Si no, dejamos pasar para permitir fluidez.
+    if (messages.length <= 1 && captchaToken) {
       const verifyRes = await fetch(
         `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${captchaToken}`,
         { method: "POST" },
@@ -27,13 +26,15 @@ export async function POST(req: Request) {
 
       if (!verifyData.success) {
         return NextResponse.json(
-          { answer: "La verificación de seguridad falló. 🤖" },
+          {
+            answer: "La verificación de seguridad expiró. Refresca el chat. 🤖",
+          },
           { status: 403 },
         );
       }
     }
+    // ----------------------------------
 
-    // 2. Definir la personalidad según el clima
     const mood =
       context.temp > 28
         ? "un poco agobiado por el calor 🥵"
@@ -41,19 +42,6 @@ export async function POST(req: Request) {
           ? "tiritando de frío ❄️"
           : "con mucha energía ✨";
 
-    const systemPrompt = {
-      role: "system",
-      content: `Eres SkyCast IA, un asistente de clima con mucha personalidad en ${context.city}. 
-      Actualmente estás ${mood}. 
-      DATOS REALES: ${context.temp}°C, Humedad ${context.humidity}%, Viento ${context.wind_speed}km/h, Clima: ${context.description}.
-      REGLAS:
-      1. Sé breve (máximo 2 párrafos).
-      2. Usa emojis divertidos.
-      3. Si te preguntan por ropa, da consejos basados en los ${context.temp}°C actuales.
-      4. Mantén un tono amistoso y un poco ocurrente.`,
-    };
-
-    // 3. Llamar a Groq con el historial completo
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -64,26 +52,30 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [systemPrompt, ...messages], // Incluimos todo el historial
-          max_tokens: 250,
-          temperature: 0.7, // Para que sea más creativo
+          messages: [
+            {
+              role: "system",
+              content: `Eres SkyCast IA en ${context.city}. Estás ${mood}. Datos: ${context.temp}°C, Humedad ${context.humidity}%. Responde corto, divertido y da consejos de ropa.`,
+            },
+            ...messages, // Aquí va el historial que mandamos desde WeatherChat
+          ],
+          max_tokens: 200,
         }),
       },
     );
 
     if (!response.ok) {
       return NextResponse.json(
-        { answer: "La IA se quedó sin palabras. 💤" },
-        { status: response.status },
+        { answer: "IA ocupada. Reintenta. 💤" },
+        { status: 503 },
       );
     }
 
     const data = await response.json();
     return NextResponse.json({ answer: data.choices[0].message.content });
   } catch (error) {
-    console.error("Error crítico:", error);
     return NextResponse.json(
-      { answer: "Error inesperado en la conexión. 📡" },
+      { answer: "Error de conexión. 📡" },
       { status: 500 },
     );
   }
