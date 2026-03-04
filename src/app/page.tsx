@@ -16,6 +16,7 @@ import {
   getWeatherForecast,
 } from "@/lib/api/weather";
 import { getAiWeatherAnalysis } from "@/lib/api/mistral";
+import { getNews } from "@/lib/api/news";
 
 // Componentes
 import SearchCity from "@/components/ui/SearchCity";
@@ -23,6 +24,309 @@ import WeatherChat from "@/components/ui/WeatherChat";
 import MainWeatherCard from "@/components/ui/MainWeatherCard";
 import ForecastCard from "@/components/ui/ForecastCard";
 import WeatherStats from "@/components/ui/WeatherStats";
+import WeatherNews from "@/components/ui/WeatherNews";
+
+// ─── FOOTER COMPONENT ────────────────────────────────────────────────────────
+function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
+  const [birdOffset, setBirdOffset] = useState(0);
+  const [birdOffset2, setBirdOffset2] = useState(200);
+  const [wingAngle, setWingAngle] = useState(0);
+
+  useEffect(() => {
+    let frame: number;
+    let t = 0;
+    const animate = () => {
+      t += 0.012;
+      setBirdOffset((t * 60) % 1500);
+      setBirdOffset2((t * 60 + 180) % 1500);
+      setWingAngle(Math.sin(t * 8) * 12);
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const grassLight = isHot ? "#4ade80" : "#22c55e";
+  const grassDark = isHot ? "#166534" : "#14532d";
+  const mountainFar = isHot ? "#a3e635" : "#6b7280";
+  const mountainNear = isHot ? "#65a30d" : "#4b5563";
+  const treeMain = isHot ? "#16a34a" : "#15803d";
+  const treeShadow = isHot ? "#14532d" : "#052e16";
+  const treeTrunk = isHot ? "#713f12" : "#431407";
+  const lakeColor = isHot ? "#7dd3fc" : "#93c5fd";
+  const lakeDark = isHot ? "#0284c7" : "#1d4ed8";
+  const birdColor = isHot ? "#78350f" : "#1e1b4b";
+
+  return (
+    <footer className="mt-auto relative z-20">
+      <div
+        className="w-full relative overflow-hidden"
+        style={{ height: "180px" }}
+      >
+        <svg
+          viewBox="0 0 1440 180"
+          className="absolute bottom-0 left-0 w-full h-full"
+          preserveAspectRatio="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="grassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={grassLight} />
+              <stop offset="100%" stopColor={grassDark} />
+            </linearGradient>
+            <linearGradient id="lakeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={lakeColor} stopOpacity="0.85" />
+              <stop offset="100%" stopColor={lakeDark} stopOpacity="0.95" />
+            </linearGradient>
+            <linearGradient id="mtnFarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={mountainFar} stopOpacity="0.5" />
+              <stop offset="100%" stopColor={mountainFar} stopOpacity="0.2" />
+            </linearGradient>
+            <linearGradient id="mtnNearGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={mountainNear} stopOpacity="0.7" />
+              <stop offset="100%" stopColor={mountainNear} stopOpacity="0.3" />
+            </linearGradient>
+            <linearGradient id="treeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={treeMain} />
+              <stop offset="100%" stopColor={treeShadow} />
+            </linearGradient>
+          </defs>
+
+          {/* Montañas lejanas */}
+          <polygon points="60,130 160,60 260,130" fill="url(#mtnFarGrad)" />
+          <polygon points="1180,130 1300,50 1420,130" fill="url(#mtnFarGrad)" />
+          {/* Montañas cercanas */}
+          <polygon points="0,130 120,70 240,130" fill="url(#mtnNearGrad)" />
+          <polygon
+            points="1200,130 1340,65 1440,130"
+            fill="url(#mtnNearGrad)"
+          />
+          {/* Nieve */}
+          <polygon points="160,62 145,85 175,85" fill="white" opacity="0.5" />
+          <polygon
+            points="1300,52 1283,78 1317,78"
+            fill="white"
+            opacity="0.5"
+          />
+
+          {/* Lago */}
+          <ellipse cx="320" cy="148" rx="110" ry="14" fill="url(#lakeGrad)" />
+          <line
+            x1="250"
+            y1="146"
+            x2="290"
+            y2="146"
+            stroke="white"
+            strokeWidth="1"
+            strokeOpacity="0.3"
+          />
+          <line
+            x1="310"
+            y1="150"
+            x2="360"
+            y2="150"
+            stroke="white"
+            strokeWidth="0.8"
+            strokeOpacity="0.25"
+          />
+          <ellipse
+            cx="320"
+            cy="162"
+            rx="110"
+            ry="5"
+            fill={grassDark}
+            opacity="0.4"
+          />
+
+          {/* Césped fondo */}
+          <path
+            d="M0,180 L0,110 C100,90 200,130 300,110 C400,90 500,130 600,110 C700,90 800,130 900,110 C1000,90 1100,130 1200,110 C1300,90 1400,130 1440,110 L1440,180 Z"
+            fill="url(#grassGrad)"
+            opacity="0.5"
+          />
+
+          {/* Árboles */}
+          <rect x="128" y="128" width="5" height="22" fill={treeTrunk} />
+          <polygon points="130,78 115,130 145,130" fill="url(#treeGrad)" />
+          <polygon
+            points="130,90 112,136 148,136"
+            fill={treeShadow}
+            opacity="0.3"
+          />
+          <polygon points="130,100 118,125 142,125" fill={treeMain} />
+
+          <rect x="100" y="134" width="4" height="16" fill={treeTrunk} />
+          <polygon points="102,98 90,136 114,136" fill="url(#treeGrad)" />
+          <polygon points="102,108 91,132 113,132" fill={treeMain} />
+
+          <rect x="58" y="136" width="3" height="14" fill={treeTrunk} />
+          <polygon points="60,106 50,138 70,138" fill="url(#treeGrad)" />
+
+          <rect x="1280" y="126" width="6" height="24" fill={treeTrunk} />
+          <polygon points="1283,72 1264,130 1302,130" fill="url(#treeGrad)" />
+          <polygon points="1283,88 1266,128 1300,128" fill={treeMain} />
+          <polygon
+            points="1283,82 1262,132 1304,132"
+            fill={treeShadow}
+            opacity="0.25"
+          />
+
+          <rect x="1310" y="132" width="4" height="18" fill={treeTrunk} />
+          <polygon points="1312,100 1298,134 1326,134" fill="url(#treeGrad)" />
+          <polygon points="1312,110 1300,130 1324,130" fill={treeMain} />
+
+          <rect x="1370" y="136" width="3" height="14" fill={treeTrunk} />
+          <polygon points="1372,108 1362,138 1382,138" fill="url(#treeGrad)" />
+
+          <rect x="758" y="136" width="5" height="18" fill={treeTrunk} />
+          <circle cx="760" cy="122" r="18" fill={treeMain} />
+          <circle cx="752" cy="126" r="12" fill={treeMain} />
+          <circle cx="768" cy="125" r="13" fill={treeShadow} opacity="0.4" />
+
+          <rect x="458" y="138" width="4" height="16" fill={treeTrunk} />
+          <circle cx="460" cy="125" r="15" fill={treeMain} />
+          <circle cx="453" cy="128" r="10" fill={treeShadow} opacity="0.35" />
+
+          {/* Césped frente */}
+          <path
+            d="M0,180 L0,150 C50,140 100,160 150,150 C200,140 250,160 300,150 C350,140 400,160 450,150 C500,140 550,160 600,150 C650,140 700,160 750,150 C800,140 850,160 900,150 C950,140 1000,160 1050,150 C1100,140 1150,160 1200,150 C1250,140 1300,160 1350,150 C1400,140 1440,150 L1440,180 Z"
+            fill="url(#grassGrad)"
+          />
+
+          {/* Briznas de hierba */}
+          {[30, 80, 200, 400, 550, 680, 850, 1000, 1100, 1250, 1380].map(
+            (x, i) => (
+              <g key={i}>
+                <line
+                  x1={x}
+                  y1="150"
+                  x2={x - 3}
+                  y2="140"
+                  stroke={grassLight}
+                  strokeWidth="1.5"
+                  strokeOpacity="0.7"
+                />
+                <line
+                  x1={x + 5}
+                  y1="150"
+                  x2={x + 8}
+                  y2="139"
+                  stroke={grassLight}
+                  strokeWidth="1.5"
+                  strokeOpacity="0.5"
+                />
+                <line
+                  x1={x + 10}
+                  y1="150"
+                  x2={x + 10}
+                  y2="141"
+                  stroke={grassLight}
+                  strokeWidth="1"
+                  strokeOpacity="0.6"
+                />
+              </g>
+            ),
+          )}
+
+          {/* Pájaro 1 */}
+          <g
+            transform={`translate(${birdOffset - 100}, ${55 + Math.sin(birdOffset / 80) * 8})`}
+          >
+            <ellipse
+              cx="0"
+              cy="0"
+              rx="5"
+              ry="2.5"
+              fill={birdColor}
+              opacity="0.85"
+            />
+            <path
+              d={`M-2,0 Q-10,${-wingAngle * 0.7} -14,${-wingAngle}`}
+              stroke={birdColor}
+              strokeWidth="1.8"
+              fill="none"
+              strokeOpacity="0.85"
+              strokeLinecap="round"
+            />
+            <path
+              d={`M2,0 Q10,${-wingAngle * 0.7} 14,${-wingAngle}`}
+              stroke={birdColor}
+              strokeWidth="1.8"
+              fill="none"
+              strokeOpacity="0.85"
+              strokeLinecap="round"
+            />
+            <path
+              d="M-5,0 L-9,2 M-5,0 L-9,-1"
+              stroke={birdColor}
+              strokeWidth="1"
+              strokeOpacity="0.6"
+            />
+          </g>
+
+          {/* Pájaro 2 */}
+          <g
+            transform={`translate(${birdOffset2 - 100}, ${68 + Math.sin((birdOffset2 + 40) / 80) * 7})`}
+            opacity="0.7"
+          >
+            <ellipse
+              cx="0"
+              cy="0"
+              rx="4"
+              ry="2"
+              fill={birdColor}
+              opacity="0.8"
+            />
+            <path
+              d={`M-2,0 Q-8,${-wingAngle * 0.65} -12,${-wingAngle * 0.9}`}
+              stroke={birdColor}
+              strokeWidth="1.5"
+              fill="none"
+              strokeLinecap="round"
+            />
+            <path
+              d={`M2,0 Q8,${-wingAngle * 0.65} 12,${-wingAngle * 0.9}`}
+              stroke={birdColor}
+              strokeWidth="1.5"
+              fill="none"
+              strokeLinecap="round"
+            />
+          </g>
+
+          {/* Pájaro 3 — dirección opuesta */}
+          <g
+            transform={`translate(${1440 - ((birdOffset * 0.6) % 1500)}, ${48 + Math.sin(birdOffset / 60) * 6})`}
+            opacity="0.6"
+          >
+            <ellipse
+              cx="0"
+              cy="0"
+              rx="3.5"
+              ry="1.8"
+              fill={birdColor}
+              opacity="0.75"
+            />
+            <path
+              d={`M-1.5,0 Q-7,${-wingAngle * 0.6} -10,${-wingAngle * 0.85}`}
+              stroke={birdColor}
+              strokeWidth="1.3"
+              fill="none"
+              strokeLinecap="round"
+            />
+            <path
+              d={`M1.5,0 Q7,${-wingAngle * 0.6} 10,${-wingAngle * 0.85}`}
+              stroke={birdColor}
+              strokeWidth="1.3"
+              fill="none"
+              strokeLinecap="round"
+            />
+          </g>
+        </svg>
+      </div>
+    </footer>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   const {
@@ -33,6 +337,7 @@ export default function Home() {
   } = useLocation();
   const [weather, setWeather] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
+  const [news, setNews] = useState<any[]>([]);
   const [localTime, setLocalTime] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [loadingAi, setLoadingAi] = useState(false);
@@ -52,13 +357,22 @@ export default function Home() {
         getCurrentWeather(lat, lon),
         getWeatherForecast(lat, lon),
       ]);
+
       if (current) {
         setWeather(current);
+
+        // Cargar Análisis IA y Noticias en paralelo para mejor performance
         setLoadingAi(true);
-        const analysis = await getAiWeatherAnalysis(current);
+        const [analysis, newsData] = await Promise.all([
+          getAiWeatherAnalysis(current),
+          getNews(current.name),
+        ]);
+
         setAiAnalysis(analysis);
+        setNews(newsData);
         setLoadingAi(false);
       }
+
       if (hourly) setForecast(hourly.slice(0, 8));
       setIsInitialLoading(false);
     } catch (err) {
@@ -251,12 +565,12 @@ export default function Home() {
               className={`w-9 h-9 md:w-10 md:h-10 rounded-2xl flex items-center justify-center transition-transform hover:rotate-12 ${
                 isSnow
                   ? "bg-slate-900 shadow-lg"
-                  : "bg-white shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  : "bg-blue shadow-[0_0_90px_rgba(255,255,255,0.2)]"
               }`}
             >
               <Sun
-                size={20}
-                className={isSnow ? "text-white" : "text-black"}
+                size={28}
+                className={isSnow ? "text-yellow" : "text-yellow-400"}
                 fill="currentColor"
               />
             </div>
@@ -321,6 +635,9 @@ export default function Home() {
             />
             <WeatherStats weather={weather} variant="horizontal" />
             <ForecastCard forecast={forecast || []} />
+
+            {/* --- SECCIÓN DE NOTICIAS --- */}
+            <WeatherNews news={news} isSnow={isSnow} />
           </div>
         )}
       </div>
@@ -339,31 +656,7 @@ export default function Home() {
         />
       )}
 
-      <footer className="mt-auto relative z-20">
-        <div className="w-full h-24 relative overflow-hidden">
-          <svg
-            viewBox="0 0 1440 120"
-            className="absolute bottom-0 left-0 w-full h-full"
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <linearGradient id="grassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={isHot ? "#4ade80" : "#22c55e"} />
-                <stop offset="100%" stopColor={isHot ? "#166534" : "#14532d"} />
-              </linearGradient>
-            </defs>
-            <path
-              d="M0,120 L0,80 C100,60 200,100 300,80 C400,60 500,100 600,80 C700,60 800,100 900,80 C1000,60 1100,100 1200,80 C1300,60 1400,100 1440,80 L1440,120 Z"
-              fill="url(#grassGrad)"
-              opacity="0.6"
-            />
-            <path
-              d="M0,120 L0,100 C50,90 100,110 150,100 C200,90 250,110 300,100 C350,90 400,110 450,100 C500,90 550,110 600,100 C650,90 700,110 750,100 C800,90 850,110 900,100 C950,90 1000,110 1050,100 C1100,90 1150,110 1200,100 C1250,90 1300,110 1350,100 C1400,90 1440,100 L1440,120 Z"
-              fill="url(#grassGrad)"
-            />
-          </svg>
-        </div>
-      </footer>
+      <WeatherFooter isHot={isHot} />
 
       <style jsx>{`
         .animate-spin-slow {
