@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic"; // Necesario para evitar error de 'window'
 import {
   Sun,
   MapPin,
@@ -25,6 +26,14 @@ import MainWeatherCard from "@/components/ui/MainWeatherCard";
 import ForecastCard from "@/components/ui/ForecastCard";
 import WeatherStats from "@/components/ui/WeatherStats";
 import WeatherNews from "@/components/ui/WeatherNews";
+
+// Importación dinámica del Mapa para fixear "window is not defined"
+const WeatherMap = dynamic(() => import("@/components/ui/WeatherMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[550px] bg-black/10 animate-pulse rounded-[3rem]" />
+  ),
+});
 
 // ─── FOOTER COMPONENT ────────────────────────────────────────────────────────
 function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
@@ -63,6 +72,15 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
         className="w-full relative overflow-hidden"
         style={{ height: "180px" }}
       >
+        {/* Texto SkyCast IA - 2026 */}
+        <div className="absolute top-4 w-full flex justify-center z-30 pointer-events-none">
+          <span
+            className={`text-[11px] font-black uppercase tracking-[0.6em] opacity-40 ${isHot ? "text-orange-950" : "text-white"}`}
+          >
+            SkyCast IA — 2026
+          </span>
+        </div>
+
         <svg
           viewBox="0 0 1440 180"
           className="absolute bottom-0 left-0 w-full h-full"
@@ -92,16 +110,13 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
             </linearGradient>
           </defs>
 
-          {/* Montañas lejanas */}
           <polygon points="60,130 160,60 260,130" fill="url(#mtnFarGrad)" />
           <polygon points="1180,130 1300,50 1420,130" fill="url(#mtnFarGrad)" />
-          {/* Montañas cercanas */}
           <polygon points="0,130 120,70 240,130" fill="url(#mtnNearGrad)" />
           <polygon
             points="1200,130 1340,65 1440,130"
             fill="url(#mtnNearGrad)"
           />
-          {/* Nieve */}
           <polygon points="160,62 145,85 175,85" fill="white" opacity="0.5" />
           <polygon
             points="1300,52 1283,78 1317,78"
@@ -109,7 +124,6 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
             opacity="0.5"
           />
 
-          {/* Lago */}
           <ellipse cx="320" cy="148" rx="110" ry="14" fill="url(#lakeGrad)" />
           <line
             x1="250"
@@ -138,14 +152,12 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
             opacity="0.4"
           />
 
-          {/* Césped fondo */}
           <path
             d="M0,180 L0,110 C100,90 200,130 300,110 C400,90 500,130 600,110 C700,90 800,130 900,110 C1000,90 1100,130 1200,110 C1300,90 1400,130 1440,110 L1440,180 Z"
             fill="url(#grassGrad)"
             opacity="0.5"
           />
 
-          {/* Árboles */}
           <rect x="128" y="128" width="5" height="22" fill={treeTrunk} />
           <polygon points="130,78 115,130 145,130" fill="url(#treeGrad)" />
           <polygon
@@ -187,13 +199,11 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
           <circle cx="460" cy="125" r="15" fill={treeMain} />
           <circle cx="453" cy="128" r="10" fill={treeShadow} opacity="0.35" />
 
-          {/* Césped frente */}
           <path
             d="M0,180 L0,150 C50,140 100,160 150,150 C200,140 250,160 300,150 C350,140 400,160 450,150 C500,140 550,160 600,150 C650,140 700,160 750,150 C800,140 850,160 900,150 C950,140 1000,160 1050,150 C1100,140 1150,160 1200,150 C1250,140 1300,160 1350,150 C1400,140 1440,150 L1440,180 Z"
             fill="url(#grassGrad)"
           />
 
-          {/* Briznas de hierba */}
           {[30, 80, 200, 400, 550, 680, 850, 1000, 1100, 1250, 1380].map(
             (x, i) => (
               <g key={i}>
@@ -228,7 +238,6 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
             ),
           )}
 
-          {/* Pájaro 1 */}
           <g
             transform={`translate(${birdOffset - 100}, ${55 + Math.sin(birdOffset / 80) * 8})`}
           >
@@ -256,15 +265,8 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
               strokeOpacity="0.85"
               strokeLinecap="round"
             />
-            <path
-              d="M-5,0 L-9,2 M-5,0 L-9,-1"
-              stroke={birdColor}
-              strokeWidth="1"
-              strokeOpacity="0.6"
-            />
           </g>
 
-          {/* Pájaro 2 */}
           <g
             transform={`translate(${birdOffset2 - 100}, ${68 + Math.sin((birdOffset2 + 40) / 80) * 7})`}
             opacity="0.7"
@@ -293,7 +295,6 @@ function WeatherFooter({ isHot = false }: { isHot?: boolean }) {
             />
           </g>
 
-          {/* Pájaro 3 — dirección opuesta */}
           <g
             transform={`translate(${1440 - ((birdOffset * 0.6) % 1500)}, ${48 + Math.sin(birdOffset / 60) * 6})`}
             opacity="0.6"
@@ -344,7 +345,13 @@ export default function Home() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [minimumLoading, setMinimumLoading] = useState(true);
 
-  // Forzar 4 segundos de carga mínima
+  // EFECTO DE SCROLL AUTOMÁTICO AL CAMBIAR CIUDAD
+  useEffect(() => {
+    if (weather?.name) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [weather?.name]);
+
   useEffect(() => {
     const timer = setTimeout(() => setMinimumLoading(false), 4000);
     return () => clearTimeout(timer);
@@ -360,19 +367,15 @@ export default function Home() {
 
       if (current) {
         setWeather(current);
-
-        // Cargar Análisis IA y Noticias en paralelo para mejor performance
         setLoadingAi(true);
         const [analysis, newsData] = await Promise.all([
           getAiWeatherAnalysis(current),
-          getNews(current.name),
+          getNews(current.name).catch(() => []),
         ]);
-
         setAiAnalysis(analysis);
-        setNews(newsData);
+        setNews(Array.isArray(newsData) ? newsData : []);
         setLoadingAi(false);
       }
-
       if (hourly) setForecast(hourly.slice(0, 8));
       setIsInitialLoading(false);
     } catch (err) {
@@ -412,26 +415,23 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [weather]);
 
-  const getWeatherType = () => {
-    if (!weather) return "default";
-    const main = weather.weather[0].main.toLowerCase();
-    const temp = weather.main.temp;
+  const weatherType = !weather
+    ? "default"
+    : (() => {
+        const main = weather.weather[0].main.toLowerCase();
+        const temp = weather.main.temp;
+        if (temp > 28) return "hot";
+        if (temp <= 0 || main.includes("snow")) return "snow";
+        if (main.includes("thunderstorm")) return "thunder";
+        if (main.includes("rain") || main.includes("drizzle")) return "rain";
+        if (main.includes("clear")) return "clear";
+        if (main.includes("clouds")) return "clouds";
+        return "default";
+      })();
 
-    if (temp > 28) return "hot";
-    if (temp <= 0 || main.includes("snow")) return "snow";
-    if (main.includes("thunderstorm")) return "thunder";
-    if (main.includes("rain") || main.includes("drizzle")) return "rain";
-    if (main.includes("clear")) return "clear";
-    if (main.includes("clouds")) return "clouds";
-
-    return "default";
-  };
-
-  const weatherType = getWeatherType();
   const isSnow = weatherType === "snow";
   const isHot = weatherType === "hot";
 
-  // --- PANTALLA DE CARGA ---
   if (minimumLoading || (isInitialLoading && !weather)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-sky-400 via-blue-500 to-blue-700 flex flex-col items-center justify-center text-white relative overflow-hidden z-[1000]">
@@ -458,16 +458,15 @@ export default function Home() {
                     Permitir acceso:
                   </p>
                   <p className="text-xs leading-relaxed">
-                    Pulsá el <strong>candado</strong> cerca de la dirección
-                    (URL) y seleccioná <strong>"Permitir"</strong> acceso a la
-                    ubicación.
+                    Pulsá el <strong>candado</strong> cerca de la URL y
+                    seleccioná <strong>"Permitir"</strong>.
                   </p>
                 </div>
               </div>
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => refresh()}
-                  className="flex items-center justify-center gap-2 bg-white text-blue-600 font-bold py-4 px-6 rounded-2xl hover:bg-blue-50 transition-all shadow-lg active:scale-95"
+                  className="flex items-center justify-center gap-2 bg-white text-blue-600 font-bold py-4 px-6 rounded-2xl hover:bg-blue-50 transition-all active:scale-95"
                 >
                   <RefreshCw
                     size={20}
@@ -550,27 +549,17 @@ export default function Home() {
         <div className="absolute inset-0 pointer-events-none z-0 rain-container"></div>
       )}
 
-      {/* ===== HEADER ===== */}
       <header
-        className={`w-full sticky top-0 z-50 transition-all duration-300 border-b backdrop-blur-xl ${
-          isSnow
-            ? "bg-white/90 border-slate-200 shadow-sm text-slate-900"
-            : "bg-[#0A0A0A]/40 border-white/5 shadow-2xl text-white"
-        }`}
+        className={`w-full sticky top-0 z-50 transition-all duration-300 border-b backdrop-blur-xl ${isSnow ? "bg-white/90 border-slate-300 shadow-sm text-slate-900" : "bg-[#0A0A0A]/40 border-white/5 shadow-2xl text-white"}`}
       >
         <div className="max-w-[1400px] mx-auto px-4 md:px-10 h-16 md:h-[72px] flex items-center justify-between gap-3">
-          {/* IZQUIERDA: MARCA */}
           <div className="flex items-center gap-2.5 shrink-0">
             <div
-              className={`w-9 h-9 md:w-10 md:h-10 rounded-2xl flex items-center justify-center transition-transform hover:rotate-12 ${
-                isSnow
-                  ? "bg-slate-900 shadow-lg"
-                  : "bg-blue shadow-[0_0_90px_rgba(255,255,255,0.2)]"
-              }`}
+              className={`w-9 h-9 md:w-10 md:h-10 rounded-2xl flex items-center justify-center transition-transform hover:rotate-12 ${isSnow ? "bg-slate-200" : "bg-blue shadow-[0_0_90px_rgba(255,255,255,0.2)]"}`}
             >
               <Sun
                 size={28}
-                className={isSnow ? "text-yellow" : "text-yellow-400"}
+                className={isSnow ? "text-yellow-600" : "text-yellow-400"}
                 fill="currentColor"
               />
             </div>
@@ -583,19 +572,11 @@ export default function Home() {
               </span>
             </div>
           </div>
-
-          {/* DERECHA: ACCIONES — sin overflow */}
           <div className="flex items-center gap-2 min-w-0">
-            {/* BOTÓN GPS — sólo icono en mobile, texto en md+ */}
             <button
               onClick={refresh}
               disabled={locLoading}
-              title="Mi ubicación"
-              className={`flex items-center justify-center gap-2 h-10 md:h-11 px-3 md:px-5 rounded-2xl font-bold text-[11px] uppercase tracking-widest transition-all active:scale-90 disabled:opacity-50 shrink-0 ${
-                isSnow
-                  ? "bg-slate-100 text-slate-900 hover:bg-slate-200"
-                  : "bg-white/5 text-white border border-white/10 hover:bg-white/10"
-              }`}
+              className={`flex items-center justify-center gap-2 h-10 md:h-11 px-3 md:px-5 rounded-2xl font-bold text-[11px] uppercase tracking-widest transition-all active:scale-90 disabled:opacity-50 shrink-0 ${isSnow ? "bg-slate-900 text-white hover:bg-black" : "bg-white/5 text-white border border-white/10 hover:bg-white/10"}`}
             >
               {locLoading ? (
                 <RefreshCw size={16} className="animate-spin" />
@@ -606,8 +587,6 @@ export default function Home() {
                 </>
               )}
             </button>
-
-            {/* BUSCADOR */}
             <SearchCity
               onSearch={handleSearch}
               onGPS={refresh}
@@ -618,9 +597,13 @@ export default function Home() {
         </div>
       </header>
 
-      {/* CONTENIDO */}
+      {/* MODIFICACIÓN CLAVE: 
+          He añadido selectores descendientes en el className del contenedor para que si isSnow es true,
+          todos los elementos internos (texto, números de las cards, iconos de Lucide) hereden el color negro.
+      */}
       <div
-        className={`w-full max-w-[1400px] mx-auto p-4 md:p-10 space-y-8 z-10 relative flex-1 ${isSnow ? "[&_*]:text-slate-950" : ""}`}
+        className={`w-full max-w-[1400px] mx-auto p-4 md:p-10 space-y-8 z-10 relative flex-1 
+        ${isSnow ? "[&_h1]:text-slate-950 [&_h2]:text-slate-950 [&_h3]:text-slate-950 [&_span]:text-slate-950 [&_p]:text-slate-950 [&_svg]:text-slate-950 [&_div]:text-slate-950" : ""}`}
       >
         {weather && (
           <div className="space-y-6 animate-in fade-in duration-1000">
@@ -629,15 +612,23 @@ export default function Home() {
               localTime={localTime}
               loadingAi={loadingAi}
               aiAnalysis={aiAnalysis}
-              getTempColor={(t: number) =>
-                isSnow ? "text-slate-950" : "text-white"
-              }
+              getTempColor={() => (isSnow ? "text-slate-950" : "text-white")}
             />
+
+            {/* Las cards heredarán el color negro del contenedor padre si isSnow es true */}
             <WeatherStats weather={weather} variant="horizontal" />
             <ForecastCard forecast={forecast || []} />
-
-            {/* --- SECCIÓN DE NOTICIAS --- */}
             <WeatherNews news={news} isSnow={isSnow} />
+
+            {/* Contenedor específico para el mapa con reset de colores para no afectar su interfaz interna */}
+            <div className="map-wrapper text-white [&_*]:text-white">
+              <WeatherMap
+                lat={weather.coord.lat}
+                lon={weather.coord.lon}
+                city={weather.name}
+                isSnow={isSnow}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -657,6 +648,12 @@ export default function Home() {
       )}
 
       <WeatherFooter isHot={isHot} />
+
+      <style jsx global>{`
+        html {
+          scroll-behavior: smooth;
+        }
+      `}</style>
 
       <style jsx>{`
         .animate-spin-slow {
